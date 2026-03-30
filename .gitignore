@@ -1,0 +1,10 @@
+.env
+__pycache__/
+*.pyc
+.DS_Store
+.claude/
+
+# Grosse Rohdaten (zu gross fuer GitHub, lokal behalten)
+Cedrics_WIP/Data_Pipeline/lor_IHKBerlin_Gewerbedaten.csv
+Cedrics_WIP/Data_Pipeline/dataset_berlin_doener.json
+_archiv/

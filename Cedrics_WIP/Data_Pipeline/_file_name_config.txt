@@ -1,0 +1,30 @@
+# ============================================================
+# Dateinamen-Konfiguration fuer merge_masterdata.ipynb
+# Alle Pfade relativ zum Data_Pipeline Ordner
+# ============================================================
+
+# --- Input: Geodaten ---
+LOR_GEOJSON=lor_planungsraeume_2021.geojson
+
+# --- Input: Bevoelkerung (Amt fuer Statistik, Stand 31.12.2024) ---
+POPULATION_CSV=lor_bevoelkerungs-daten_2024.csv
+
+# --- Input: Medianeinkommen (Senatsverwaltung, Stand 31.12.2023) ---
+INCOME_XLSX=lor_Medianeinkommen_31-12-2023.xlsx
+
+# --- Input: Monitoring Soziale Stadtentwicklung 2023 ---
+MSS_XLSX=lor_monitoring_soziale-stadtentwicklung_2023.xlsx
+
+# --- Input: Doenerlaeden (Google Places API) ---
+DOENER_CSV=dataset_berlin_doener_clean.csv
+
+# --- Input: IHK Gewerbedaten Berlin ---
+IHK_CSV=lor_IHKBerlin_Gewerbedaten.csv
+
+# --- Input: Infrastruktur (Google Places Aggregate API) ---
+# Wird erzeugt durch: infrastruktur_aggregate-api.ipynb
+INFRASTRUKTUR_CSV=lor_infrastruktur.csv
+
+# --- Output ---
+OUTPUT_CSV=berlin_masterdata.csv
+OUTPUT_SQLITE=berlin_masterdata.db
