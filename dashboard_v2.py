@@ -42,11 +42,15 @@ st.markdown(
     }
 
     /* ── Sidebar ── */
-    section[data-testid="stSidebar"] {
-        width: 210px !important;
-        min-width: 210px !important;
+    section[data-testid="stSidebar"][aria-expanded="true"] {
+        width: 220px !important;
         background: #FFFFFF !important;
         border-right: 1px solid #E2E8F0 !important;
+    }
+    section[data-testid="stSidebar"][aria-expanded="false"] {
+        width: 0 !important;
+        min-width: 0 !important;
+        overflow: hidden !important;
     }
     section[data-testid="stSidebar"] * {
         font-size: 0.85rem !important;
@@ -166,17 +170,15 @@ st.markdown(
     }
 
     /* ── Sidebar toggle button ── */
-    [data-testid="collapsedControl"],
-    [data-testid="stSidebarCollapsedControl"] {
+    [data-testid="collapsedControl"] button,
+    [data-testid="stSidebarCollapsedControl"] button {
         background: white !important;
         border: 1px solid #E2E8F0 !important;
         border-radius: 6px !important;
         box-shadow: 0 1px 3px rgba(0,0,0,0.06) !important;
-        top: 1rem !important;
-    }
-    [data-testid="collapsedControl"] svg,
-    [data-testid="stSidebarCollapsedControl"] svg {
         color: #374151 !important;
+        width: 2rem !important;
+        height: 2rem !important;
     }
 
     /* ── Main content top padding (leaves room for header bar) ── */
@@ -534,10 +536,12 @@ _init_session_state()
 # Sidebar navigation
 # =============================================================================
 
+_logo_path = os.path.join(os.path.dirname(__file__) if "__file__" in dir() else ".", "Logo.png")
+if os.path.exists(_logo_path):
+    st.sidebar.image(_logo_path, use_container_width=True)
+
 st.sidebar.markdown(
-    "<div style='padding:16px 0 8px; font-size:0.9rem; font-weight:500; color:#111827;"
-    " letter-spacing:-0.01em;'>Döner Standortanalyse</div>"
-    "<div style='font-size:0.72rem; color:#9CA3AF; padding-bottom:12px;'>Berlin · 542 Planungsräume</div>",
+    "<div style='font-size:0.72rem; color:#9CA3AF; padding:4px 0 12px;'>Berlin · 542 Planungsräume</div>",
     unsafe_allow_html=True,
 )
 
@@ -599,12 +603,16 @@ st.markdown(
     f"""
     <div class="page-header" style="font-family:Inter,sans-serif;">
         <div>
+            <div style="font-size:1.5rem; font-weight:700; color:#1E3A5F;
+                        letter-spacing:-0.03em; line-height:1.1; margin-bottom:4px;">
+                DönerBI
+            </div>
             <div style="font-size:0.68rem; color:#9CA3AF; text-transform:uppercase;
-                        letter-spacing:0.08em; margin-bottom:3px;">
+                        letter-spacing:0.08em; margin-bottom:2px;">
                 Döner Standortanalyse Berlin
             </div>
-            <div style="font-size:1.3rem; font-weight:500; color:#111827;
-                        letter-spacing:-0.025em; line-height:1.2;">
+            <div style="font-size:1.1rem; font-weight:500; color:#374151;
+                        letter-spacing:-0.02em; line-height:1.2;">
                 {_page_label}
             </div>
         </div>
@@ -1207,7 +1215,7 @@ if page == "Scoring Lab":
                 font={"family": "Inter, sans-serif", "size": 12, "color": "#374151"},
                 paper_bgcolor="white",
             )
-            # Highlight selected PLR
+            # Highlight: selected PLR or default top 3
             hl = st.session_state.get("scoring_highlight")
             if hl:
                 hlr = df_scored[df_scored["plr_name"] == hl]
@@ -1216,7 +1224,7 @@ if page == "Scoring Lab":
                         lat=[hlr.iloc[0]["centroid_lat"]],
                         lon=[hlr.iloc[0]["centroid_lng"]],
                         mode="markers+text",
-                        marker={"size": 18, "color": "#4A6FA5", "opacity": 0.9},
+                        marker={"size": 18, "color": "#E53935", "opacity": 0.95},
                         text=[hl],
                         textfont={"size": 10, "color": "white"},
                         textposition="middle center",
@@ -1224,6 +1232,22 @@ if page == "Scoring Lab":
                         hoverinfo="text",
                         showlegend=False,
                     ))
+            else:
+                # Default: show top 3 as red dots
+                _labels = ["01", "02", "03"]
+                for _i, _row in enumerate(top15.head(3).itertuples()):
+                    if pd.notna(getattr(_row, "centroid_lat", None)):
+                        fig_map.add_trace(go.Scattermap(
+                            lat=[_row.centroid_lat], lon=[_row.centroid_lng],
+                            mode="markers+text",
+                            marker={"size": 18, "color": "#E53935", "opacity": 0.95},
+                            text=[_labels[_i]],
+                            textfont={"size": 10, "color": "white"},
+                            textposition="middle center",
+                            hovertext=[f"{_labels[_i]} {_row.plr_name} — Score: {_row.standort_score:.1f}"],
+                            hoverinfo="text",
+                            showlegend=False,
+                        ))
             st.plotly_chart(fig_map, width="stretch")
 
 
@@ -1245,28 +1269,83 @@ elif page == "Marktanalyse":
         m1.metric("Median EW / Laden", f"{avg_epd:,.0f}")
         m2.metric("Maximum EW / Laden", f"{max_epd:,.0f}" if pd.notna(max_epd) else "–")
         m3.metric("PLR ohne Laden", n_ohne)
-
         st.markdown("---")
-        if geojson:
-            fig_ml = choropleth(
-                df_raw.copy(), geojson, "einwohner_pro_doener",
-                color_scale=MAP_SCALE_MAIN,
-                hover_data={"bezirk": True, "einwohner_pro_doener": True, "doener_count": True},
-                height=480,
-            )
-            fig_ml.update_layout(coloraxis_colorbar={"title": {"text": "EW/Döner", "font": {"size": 12}}, "thickness": 12})
-            st.plotly_chart(fig_ml, width='stretch')
 
-        st.markdown("**Top 15 Planungsräume nach Marktlückenpotenzial** (mind. 3.000 Einwohner)")
-        top_gaps = (
+        top_gaps_raw = (
             df_raw[df_raw["einwohner_gesamt"] >= 3000]
-            .nlargest(15, "einwohner_pro_doener")[
-                ["plr_name", "bezirk", "einwohner_gesamt", "doener_count", "einwohner_pro_doener"]
-            ]
+            .nlargest(15, "einwohner_pro_doener")
             .reset_index(drop=True)
         )
-        top_gaps.columns = ["PLR", "Bezirk", "Einwohner", "Döner", "EW / Döner"]
-        st.dataframe(safe_df(top_gaps), width='stretch', height=560)
+
+        if "ml_highlight" not in st.session_state:
+            st.session_state["ml_highlight"] = None
+
+        ml_map_col, ml_tbl_col = st.columns([3, 2])
+
+        # ── RIGHT: Table (renders first to capture click) ──────────────────
+        with ml_tbl_col:
+            st.subheader("Top 15 Marktlücken")
+            top_gaps_display = top_gaps_raw[
+                ["plr_name", "bezirk", "einwohner_gesamt", "doener_count", "einwohner_pro_doener"]
+            ].copy()
+            top_gaps_display.columns = ["PLR", "Bezirk", "Einwohner", "Döner", "EW / Döner"]
+            ml_event = st.dataframe(
+                safe_df(top_gaps_display),
+                width="stretch",
+                height=580,
+                on_select="rerun",
+                selection_mode="single-row",
+                key="ml_table",
+            )
+            if ml_event.selection.rows:
+                st.session_state["ml_highlight"] = top_gaps_raw.iloc[ml_event.selection.rows[0]]["plr_name"]
+
+        # ── LEFT: Map (uses updated session state) ─────────────────────────
+        with ml_map_col:
+            if geojson:
+                fig_ml = choropleth(
+                    df_raw.copy(), geojson, "einwohner_pro_doener",
+                    color_scale=MAP_SCALE_MAIN,
+                    hover_data={"bezirk": True, "einwohner_pro_doener": True, "doener_count": True},
+                    height=600,
+                )
+                fig_ml.update_layout(
+                    coloraxis_colorbar={"title": {"text": "EW/Döner", "font": {"size": 12}}, "thickness": 12},
+                    margin={"r": 0, "t": 0, "l": 0, "b": 0},
+                )
+                ml_hl = st.session_state.get("ml_highlight")
+                if ml_hl:
+                    ml_hlr = df_raw[df_raw["plr_name"] == ml_hl]
+                    if not ml_hlr.empty and pd.notna(ml_hlr.iloc[0].get("centroid_lat")):
+                        fig_ml.add_trace(go.Scattermap(
+                            lat=[ml_hlr.iloc[0]["centroid_lat"]],
+                            lon=[ml_hlr.iloc[0]["centroid_lng"]],
+                            mode="markers+text",
+                            marker={"size": 18, "color": "#E53935", "opacity": 0.95},
+                            text=[ml_hl],
+                            textfont={"size": 10, "color": "white"},
+                            textposition="middle center",
+                            hovertext=[f"{ml_hl} — EW/Döner: {ml_hlr.iloc[0]['einwohner_pro_doener']:.0f}"],
+                            hoverinfo="text",
+                            showlegend=False,
+                        ))
+                else:
+                    # Default: show top 3 as red dots
+                    _ml_labels = ["01", "02", "03"]
+                    for _i, _row in enumerate(top_gaps_raw.head(3).itertuples()):
+                        if pd.notna(getattr(_row, "centroid_lat", None)):
+                            fig_ml.add_trace(go.Scattermap(
+                                lat=[_row.centroid_lat], lon=[_row.centroid_lng],
+                                mode="markers+text",
+                                marker={"size": 18, "color": "#E53935", "opacity": 0.95},
+                                text=[_ml_labels[_i]],
+                                textfont={"size": 10, "color": "white"},
+                                textposition="middle center",
+                                hovertext=[f"{_ml_labels[_i]} {_row.plr_name} — EW/Döner: {_row.einwohner_pro_doener:.0f}"],
+                                hoverinfo="text",
+                                showlegend=False,
+                            ))
+                st.plotly_chart(fig_ml, width="stretch")
 
     # ── Tab 2: Wettbewerb ───────────────────────────────────────────────────
     with tab2:
