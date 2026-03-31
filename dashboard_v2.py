@@ -1552,7 +1552,7 @@ if page == "Konzepte und Daten":
     with st.expander("Was sind Planungsräume?", expanded=True):
         st.markdown("""
 **Planungsraum (PLR)** ist die kleinste statistische Einheit der Berliner Stadtplanung.
-Berlin ist in **542 Planungsräume** unterteilt (12 Bezirke). Ø ca. 7.000 Einwohner, ca. 3 km² pro PLR.
+Berlin ist in **542 Planungsräume** unterteilt (12 Bezirke). Ø ca. 7.000 Einwohner, ca. 1,5 km² pro PLR.
 
 Wir analysieren auf PLR-Ebene, weil Bevölkerungs-, Einkommens- und Sozialdaten auf dieser Granularität vorliegen
 und Planungsräume homogenere Quartiere abbilden als Postleitzahlen oder Bezirke.
