@@ -20,7 +20,46 @@ import streamlit as st
 st.set_page_config(
     layout="wide",
     page_title="Berlin Döner Standortanalyse",
-    page_icon="🥙",
+    page_icon=None,
+)
+
+st.markdown(
+    """
+    <style>
+    section[data-testid="stSidebar"] {
+        width: 23rem !important;
+        min-width: 23rem !important;
+    }
+    section[data-testid="stSidebar"] * {
+        font-size: 1.15rem !important;
+    }
+    section[data-testid="stSidebar"] h1,
+    section[data-testid="stSidebar"] h2,
+    section[data-testid="stSidebar"] h3 {
+        font-size: 2rem !important;
+        font-weight: 700 !important;
+    }
+    div[data-testid="stMetricLabel"],
+    div[data-testid="stMetricLabel"] p,
+    div[data-testid="stMetricLabel"] label,
+    div[data-testid="stMetricLabel"] span {
+        font-size: 2rem !important;
+        font-weight: 600 !important;
+        line-height: 1.2 !important;
+    }
+    div[data-testid="stMetricValue"] {
+        font-size: 2.05rem !important;
+    }
+    div[data-testid="stHeading"] h3,
+    div[data-testid="stMarkdownContainer"] h3,
+    h3 {
+        font-size: 2rem !important;
+        font-weight: 700 !important;
+        line-height: 1.2 !important;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
 )
 
 # ---------------------------------------------------------------------------
@@ -40,6 +79,9 @@ REG_IMG     = os.path.join(DATA_DIR, "regression_koeffizienten.png")
 COLOR_SUCCESS = "#2ecc71"
 COLOR_DANGER  = "#e74c3c"
 COLOR_NEUTRAL = "#3498db"
+MAP_SCALE_MAIN = "Cividis"
+MAP_SCALE_RATING = "Cividis"
+MAP_SCALE_INFRA = "Cividis"
 
 # =============================================================================
 # UTM Zone 33N  →  WGS 84  (exact function as specified)
@@ -177,7 +219,7 @@ def load_shops() -> pd.DataFrame:
     # Boolean flags as readable strings
     for flag, label in [("delivery","Lieferung"), ("dineIn","Vor Ort"), ("takeout","Mitnehmen")]:
         if flag in df.columns:
-            df[flag] = df[flag].map({True: "✅", False: "❌", 1: "✅", 0: "❌"}).fillna("–")
+            df[flag] = df[flag].map({True: "Ja", False: "Nein", 1: "Ja", 0: "Nein"}).fillna("–")
     df = df.dropna(subset=["latitude", "longitude"])
     return df
 
@@ -240,9 +282,9 @@ def compute_scores(
     ) / 4 * 100
 
     # Score 5 — Sozio (two modes)
-    if sozio_mode == "Kaufkraft 💰":
+    if sozio_mode == "Kaufkraft":
         s5 = (norm(fn("medianeinkommen_eur")) + (1 - norm(fn("mss_status_index")))) / 2 * 100
-    else:  # Kiez im Aufbruch 🌱
+    else:  # Kiez im Aufbruch
         gf = (
             d["gentrification_flag"].fillna(0)
             if "gentrification_flag" in d.columns
@@ -291,7 +333,7 @@ def choropleth(
     geojson: dict,
     color_col: str,
     title: str = "",
-    color_scale: str = "RdYlGn",
+    color_scale: str = MAP_SCALE_MAIN,
     height: int = 520,
     hover_data: dict | None = None,
 ) -> go.Figure:
@@ -348,21 +390,21 @@ st.sidebar.image(
     "https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/PNG_transparency_demonstration_1.png/1px-transparent.png",
     width=1,
 )  # invisible spacer – keeps layout stable on load
-st.sidebar.title("🥙 Döner Standortanalyse")
+st.sidebar.title("Döner Standortanalyse")
 st.sidebar.markdown("**Berlin · 542 Planungsräume**")
 st.sidebar.markdown("---")
 
 page = st.sidebar.radio(
     "Navigation",
     [
-        "🌍 Berlin Übersicht",
-        "🚀 Standort-Pitch",
-        "🎯 Scoring Lab",
-        "📊 Marktanalyse",
-        "🏅 Erfolgs-Profil",
-        "🔍 PLR-Vergleich",
-        "📚 Konzepte & Daten",
-        "📖 Methodik",
+        "Berlin Übersicht",
+        "Standort-Pitch",
+        "Scoring Lab",
+        "Marktanalyse",
+        "Erfolgs-Profil",
+        "PLR-Vergleich",
+        "Konzepte und Daten",
+        "Methodik",
     ],
 )
 
@@ -374,10 +416,9 @@ st.sidebar.caption("Datenstand: 2023/2024  ·  542 PLR")
 # ---------------------------------------------------------------------------
 if not os.path.exists(DB_PATH):
     st.error(
-        f"⚠️  Datenbank nicht gefunden: `{DB_PATH}`  \n"
+        f"Datenbank nicht gefunden: `{DB_PATH}`  \n"
         "Bitte zuerst die Data-Pipeline-Notebooks ausführen "
         "(nb_01 → nb_02 → nb_03).",
-        icon="🚨",
     )
     st.stop()
 
@@ -389,19 +430,17 @@ geojson  = load_geojson() if os.path.exists(GEOJSON_PATH) else None
 
 if geojson is None:
     st.warning(
-        f"⚠️  GeoJSON nicht gefunden: `{GEOJSON_PATH}` — Karten werden deaktiviert.",
-        icon="⚠️",
+        f"GeoJSON nicht gefunden: `{GEOJSON_PATH}` — Karten werden deaktiviert.",
     )
 
 
 # =============================================================================
 #  PAGE 0 — Berlin Übersicht (Karte aller Döner-Läden)
 # =============================================================================
-if page == "🌍 Berlin Übersicht":
-    st.title("🌍 Berlin — Alle Döner-Läden")
+if page == "Berlin Übersicht":
+    st.title("Berlin Übersicht")
     st.markdown(
-        "Jeder Punkt ist ein einzelner Laden. **Farbe = Bewertung** (🔴 schlecht → 🟡 okay → 🟢 top). "
-        "Hovere über einen Punkt für Details."
+        "Jeder Punkt steht für einen einzelnen Laden. Bewege den Mauszeiger über einen Punkt, um Details anzuzeigen."
     )
     st.markdown("---")
 
@@ -411,16 +450,14 @@ if page == "🌍 Berlin Übersicht":
         st.warning(
             f"Shops-Datei nicht gefunden: `{DOENER_CSV}`  \n"
             "Bitte nb_01 ausfuehren, um die Daten zu generieren.",
-            icon="⚠️",
         )
     else:
         # ── KPI row ───────────────────────────────────────────────────────────
-        k1, k2, k3, k4, k5 = st.columns(5)
-        k1.metric("🥙 Döner-Läden gesamt",  f"{len(df_shops):,}".replace(",", "."))
-        k2.metric("⭐ Ø Bewertung",          f"{df_shops['rating'].mean():.2f}")
-        k3.metric("💬 Reviews gesamt",       f"{int(df_shops['userRatingCount'].sum()):,}".replace(",", "."))
-        k4.metric("🌟 Höchstes Rating",      f"{df_shops['rating'].max():.1f}")
-        k5.metric("🚫 PLR ohne Laden",       f"{int((df_raw['doener_count'].fillna(0) == 0).sum())}")
+        k1, k2, k3, k4 = st.columns(4)
+        k1.metric("Läden gesamt",               f"{len(df_shops):,}".replace(",", "."))
+        k2.metric("Durchschnittsbewertung",     f"{df_shops['rating'].mean():.2f}")
+        k3.metric("Reviews gesamt",             f"{int(df_shops['userRatingCount'].sum()):,}".replace(",", "."))
+        k4.metric("PLR ohne Laden",             f"{int((df_raw['doener_count'].fillna(0) == 0).sum())}")
 
         st.markdown("---")
 
@@ -442,13 +479,7 @@ if page == "🌍 Berlin Übersicht":
             lat="latitude",
             lon="longitude",
             color="rating",
-            color_continuous_scale=[
-                [0.0, "#e74c3c"],
-                [0.25, "#e67e22"],
-                [0.5,  "#f1c40f"],
-                [0.75, "#2ecc71"],
-                [1.0,  "#27ae60"],
-            ],
+            color_continuous_scale=MAP_SCALE_RATING,
             range_color=[3.0, 5.0],
             size_max=10,
             hover_name="displayName_text" if "displayName_text" in df_shops.columns else None,
@@ -467,10 +498,12 @@ if page == "🌍 Berlin Übersicht":
         fig_shops.update_layout(
             margin={"r": 0, "t": 0, "l": 0, "b": 0},
             coloraxis_colorbar={
-                "title": {"text": "Bewertung"},
+                "title": {"text": "Bewertung", "font": {"size": 22}},
                 "tickvals": [3.0, 3.5, 4.0, 4.5, 5.0],
-                "ticktext": ["3.0 🔴", "3.5", "4.0 🟡", "4.5", "5.0 🟢"],
-                "len": 0.6,
+                "ticktext": ["3.0", "3.5", "4.0", "4.5", "5.0"],
+                "tickfont": {"size": 18},
+                "len": 0.78,
+                "thickness": 28,
             },
         )
         st.plotly_chart(fig_shops, width="stretch")
@@ -479,7 +512,7 @@ if page == "🌍 Berlin Übersicht":
 # =============================================================================
 #  PAGE 0b — Standort-Pitch (10-Minuten-Präsentation)
 # =============================================================================
-if page == "🚀 Standort-Pitch":
+if page == "Standort-Pitch":
     st.title("Standort-Pitch")
     st.markdown(
         "Konfiguriere deine Präferenzen und erhalte eine fertige **10-Minuten-Präsentation** "
@@ -514,7 +547,7 @@ if page == "🚀 Standort-Pitch":
             p_infr = st.slider("Infrastruktur",0, 100, step=5, key="p_w_infr",  value=st.session_state.get("w_infrastruktur", 10))
         with cc:
             p_sozi = st.slider("Sozio",         0, 100, step=5, key="p_w_sozi", value=st.session_state.get("w_sozio", 10))
-            p_mode = st.selectbox("Sozio-Modus", ["Kaufkraft 💰", "Kiez im Aufbruch 🌱"], key="p_sozio_mode")
+            p_mode = st.selectbox("Sozio-Modus", ["Kaufkraft", "Kiez im Aufbruch"], key="p_sozio_mode")
             p_top_n = st.selectbox("Top-N anzeigen", [3, 5, 10], key="p_top_n")
 
         if st.button("Pitch generieren", type="primary", use_container_width=True):
@@ -756,7 +789,7 @@ if page == "🚀 Standort-Pitch":
         if geojson and all(c in df_scored.columns for c in ["centroid_lat", "centroid_lng"]):
             fig_pitch = choropleth(
                 df_scored, geojson, color_col="standort_score",
-                title="", color_scale="RdYlGn", height=480,
+                title="", color_scale=MAP_SCALE_MAIN, height=480,
                 hover_data={"standort_score": True},
             )
             for idx_r, prow in enumerate(top_df.itertuples()):
@@ -863,8 +896,8 @@ if page == "🚀 Standort-Pitch":
 # =============================================================================
 #  PAGE 1 — Scoring Lab
 # =============================================================================
-if page == "🎯 Scoring Lab":
-    st.title("🎯 Scoring Lab — Standortbewertung")
+if page == "Scoring Lab":
+    st.title("Scoring Lab")
     st.markdown(
         "Passe die Gewichtungen an und finde die besten Standorte für deinen Döner-Laden."
     )
@@ -874,7 +907,6 @@ if page == "🎯 Scoring Lab":
         "widerzuspiegeln — Nachfrage (Bevölkerung, Verkehr) vs. Marktlücke (wenig Konkurrenz) "
         "vs. Infrastruktur (Schulen, Büros, ÖPNV). Ausführliche Erklärungen unter "
         "**Konzepte & Daten**.",
-        icon="ℹ️",
     )
     st.markdown("---")
 
@@ -882,18 +914,18 @@ if page == "🎯 Scoring Lab":
 
     # ── Left: weights ────────────────────────────────────────────────────────
     with col_weights:
-        st.subheader("⚖️ Gewichtung")
+        st.subheader("Gewichtung")
 
-        if st.button("↺ Reset", help="Gewichtungen auf Standardwerte zurücksetzen"):
+        if st.button("Reset", help="Gewichtungen auf Standardwerte zurücksetzen"):
             for key, val in _WEIGHT_DEFAULTS.items():
                 st.session_state[key] = val
             st.rerun()
 
-        w_nachfrage    = st.slider("🟠 Nachfrage",     0, 100, step=5, key="w_nachfrage")
-        w_marktluecke  = st.slider("🟢 Marktlücke",   0, 100, step=5, key="w_marktluecke")
-        w_wettbewerb   = st.slider("🔴 Wettbewerb",   0, 100, step=5, key="w_wettbewerb")
-        w_infrastruktur= st.slider("🔵 Infrastruktur",0, 100, step=5, key="w_infrastruktur")
-        w_sozio        = st.slider("🟣 Sozio",         0, 100, step=5, key="w_sozio")
+        w_nachfrage    = st.slider("Nachfrage",      0, 100, step=5, key="w_nachfrage")
+        w_marktluecke  = st.slider("Marktlücke",     0, 100, step=5, key="w_marktluecke")
+        w_wettbewerb   = st.slider("Wettbewerb",     0, 100, step=5, key="w_wettbewerb")
+        w_infrastruktur= st.slider("Infrastruktur",  0, 100, step=5, key="w_infrastruktur")
+        w_sozio        = st.slider("Sozio",          0, 100, step=5, key="w_sozio")
 
         total_w = w_nachfrage + w_marktluecke + w_wettbewerb + w_infrastruktur + w_sozio
         sigma_color = COLOR_SUCCESS if total_w == 100 else "#f39c12"
@@ -902,12 +934,12 @@ if page == "🎯 Scoring Lab":
             unsafe_allow_html=True,
         )
         if total_w != 100:
-            st.caption("💡 Tipp: Σ = 100 % für beste Vergleichbarkeit")
+            st.caption("Hinweis: Σ = 100 % für die beste Vergleichbarkeit.")
 
         st.markdown("---")
         sozio_mode = st.radio(
             "Sozio-Modus",
-            ["Kaufkraft 💰", "Kiez im Aufbruch 🌱"],
+            ["Kaufkraft", "Kiez im Aufbruch"],
             help="Kaufkraft: Medianeinkommen + MSS-Status  |  Kiez im Aufbruch: Gentrifizierungs-Flag",
         )
 
@@ -934,7 +966,7 @@ if page == "🎯 Scoring Lab":
 
     # ── Middle: map ───────────────────────────────────────────────────────────
     with col_map:
-        st.subheader("🗺️ Standort-Score Karte")
+        st.subheader("Karte Standort-Score")
         if geojson is None:
             st.info("GeoJSON nicht verfügbar — Karte kann nicht angezeigt werden.")
         else:
@@ -943,7 +975,7 @@ if page == "🎯 Scoring Lab":
                 geojson=geojson,
                 locations="plr_id",
                 color="standort_score",
-                color_continuous_scale="RdYlGn",
+                color_continuous_scale=MAP_SCALE_MAIN,
                 map_style="carto-positron",
                 center={"lat": 52.52, "lon": 13.405},
                 zoom=9,
@@ -964,7 +996,7 @@ if page == "🎯 Scoring Lab":
 
     # ── Right: ranking + detail ────────────────────────────────────────────────
     with col_rank:
-        st.subheader("🏆 Top 15")
+        st.subheader("Top 15")
 
         top15 = (
             df_scored.nlargest(15, "standort_score")[
@@ -992,7 +1024,7 @@ if page == "🎯 Scoring Lab":
         )
 
         st.markdown("---")
-        st.subheader("📍 PLR auswählen")
+        st.subheader("PLR auswählen")
 
         plr_names = sorted(df_scored["plr_name"].tolist())
         selected_plr_name = st.selectbox(
@@ -1005,21 +1037,21 @@ if page == "🎯 Scoring Lab":
 
         st.markdown(
             f"### {row['plr_name']}\n"
-            f"<span style='color:{COLOR_NEUTRAL}'>📍 {row['bezirk']}</span>",
+            f"<span style='color:{COLOR_NEUTRAL}'>{row['bezirk']}</span>",
             unsafe_allow_html=True,
         )
 
         # KPI row 1
         kpi1, kpi2, kpi3 = st.columns(3)
-        kpi1.metric("👥 Einwohner", f"{int(row['einwohner_gesamt']):,}" if pd.notna(row["einwohner_gesamt"]) else "–")
-        kpi2.metric("🥙 Döner-Läden", int(row["doener_count"]) if pd.notna(row["doener_count"]) else "–")
-        kpi3.metric("⭐ Ø Rating", safe_fmt(row["doener_avg_rating"]) if row["doener_count"] > 0 else "–")
+        kpi1.metric("Einwohner", f"{int(row['einwohner_gesamt']):,}" if pd.notna(row["einwohner_gesamt"]) else "–")
+        kpi2.metric("Döner-Läden", int(row["doener_count"]) if pd.notna(row["doener_count"]) else "–")
+        kpi3.metric("Durchschnittsbewertung", safe_fmt(row["doener_avg_rating"]) if row["doener_count"] > 0 else "–")
 
         # KPI row 2
         kpi4, kpi5, kpi6 = st.columns(3)
-        kpi4.metric("🚇 ÖPNV", int(row["transit_count"]) if pd.notna(row["transit_count"]) else "–")
-        kpi5.metric("💶 Medianeinkommen", f"{int(row['medianeinkommen_eur']):,} €" if pd.notna(row["medianeinkommen_eur"]) else "–")
-        kpi6.metric("📊 MSS-Index", safe_fmt(row["mss_status_index"]))
+        kpi4.metric("ÖPNV", int(row["transit_count"]) if pd.notna(row["transit_count"]) else "–")
+        kpi5.metric("Medianeinkommen", f"{int(row['medianeinkommen_eur']):,} €" if pd.notna(row["medianeinkommen_eur"]) else "–")
+        kpi6.metric("MSS-Index", safe_fmt(row["mss_status_index"]))
 
         # Radar chart (5 score dimensions)
         score_dims   = ["s_nachfrage", "s_marktluecke", "s_wettbewerb", "s_infrastruktur", "s_sozio"]
@@ -1050,9 +1082,9 @@ if page == "🎯 Scoring Lab":
         badge_lisa  = row.get("lisa_cluster", "–") or "–"
         st.markdown(
             f"<span style='background:{COLOR_NEUTRAL};color:white;padding:3px 8px;"
-            f"border-radius:4px;font-size:0.85em'>🏘️ {badge_kiez}</span>&nbsp;"
+            f"border-radius:4px;font-size:0.85em'>{badge_kiez}</span>&nbsp;"
             f"<span style='background:#8e44ad;color:white;padding:3px 8px;"
-            f"border-radius:4px;font-size:0.85em'>📐 LISA: {badge_lisa}</span>",
+            f"border-radius:4px;font-size:0.85em'>LISA: {badge_lisa}</span>",
             unsafe_allow_html=True,
         )
 
@@ -1060,17 +1092,17 @@ if page == "🎯 Scoring Lab":
 # =============================================================================
 #  PAGE 2 — Marktanalyse (4 Tabs)
 # =============================================================================
-elif page == "📊 Marktanalyse":
-    st.title("📊 Marktanalyse")
+elif page == "Marktanalyse":
+    st.title("Marktanalyse")
     st.markdown("---")
 
     tab1, tab2, tab3, tab4 = st.tabs(
-        ["🍽️ Marktlücken", "⭐ Qualitätslücken", "🥊 Wettbewerb", "🏗️ Infrastruktur"]
+        ["Marktlücken", "Qualitätslücken", "Wettbewerb", "Infrastruktur"]
     )
 
     # ── Tab 1: Marktlücken ──────────────────────────────────────────────────
     with tab1:
-        st.subheader("🍽️ Marktlücken — Einwohner pro Döner-Laden")
+        st.subheader("Marktlücken — Einwohner pro Döner-Laden")
 
         avg_epd   = df_raw["einwohner_pro_doener"].median()
         max_epd   = df_raw["einwohner_pro_doener"].max()
@@ -1084,10 +1116,9 @@ elif page == "📊 Marktanalyse":
         st.markdown("---")
         if geojson:
             df_map1 = df_raw.copy()
-            # RdYlGn_r: viele EW pro Döner (grün) = Marktlücke
             fig_ml = choropleth(
                 df_map1, geojson, "einwohner_pro_doener",
-                color_scale="RdYlGn",
+                color_scale=MAP_SCALE_MAIN,
                 hover_data={"bezirk": True, "einwohner_pro_doener": True, "doener_count": True},
                 height=480,
             )
@@ -1107,7 +1138,7 @@ elif page == "📊 Marktanalyse":
 
     # ── Tab 2: Qualitätslücken ──────────────────────────────────────────────
     with tab2:
-        st.subheader("⭐ Qualitätslücken — Rating vs. Bewertungsanzahl")
+        st.subheader("Qualitätslücken — Rating vs. Bewertungsanzahl")
 
         min_reviews = st.slider(
             "Mindest-Reviews für Darstellung", min_value=1, max_value=200, value=10, step=5
@@ -1146,7 +1177,7 @@ elif page == "📊 Marktanalyse":
             fig_scatter.add_annotation(
                 x=df_q["doener_total_reviews"].max() * 0.75,
                 y=3.3,
-                text="💎 Goldmine<br>(viel Nachfrage, schlechte Qualität)",
+                text="Potenzialbereich<br>(viel Nachfrage, niedrige Qualität)",
                 showarrow=False,
                 bgcolor="rgba(255,215,0,0.2)",
                 bordercolor="gold",
@@ -1157,7 +1188,7 @@ elif page == "📊 Marktanalyse":
 
     # ── Tab 3: Wettbewerb ───────────────────────────────────────────────────
     with tab3:
-        st.subheader("🥊 Wettbewerbs-Analyse")
+        st.subheader("Wettbewerbsanalyse")
 
         # Bar chart per Bezirk
         bezirk_agg = (
@@ -1213,7 +1244,7 @@ elif page == "📊 Marktanalyse":
 
     # ── Tab 4: Infrastruktur ────────────────────────────────────────────────
     with tab4:
-        st.subheader("🏗️ Infrastruktur-Analyse")
+        st.subheader("Infrastrukturanalyse")
 
         infra_options = {
             "ÖPNV (transit_count)": "transit_count",
@@ -1229,7 +1260,7 @@ elif page == "📊 Marktanalyse":
         if geojson:
             fig_infra = choropleth(
                 df_raw, geojson, infra_col,
-                color_scale="Blues",
+                color_scale=MAP_SCALE_INFRA,
                 hover_data={"bezirk": True, infra_col: True, "doener_count": True},
                 height=480,
             )
@@ -1261,8 +1292,8 @@ elif page == "📊 Marktanalyse":
 # =============================================================================
 #  PAGE 3 — Erfolgs-Profil
 # =============================================================================
-elif page == "🏅 Erfolgs-Profil":
-    st.title("🏅 Erfolgs-Profil — Was macht einen erfolgreichen Döner-Laden aus?")
+elif page == "Erfolgs-Profil":
+    st.title("Erfolgs-Profil")
     st.markdown("---")
 
     col_ctrl, col_main = st.columns([1, 3])
@@ -1308,12 +1339,12 @@ elif page == "🏅 Erfolgs-Profil":
         }
 
         df_box = df_ef[df_ef["doener_count"] > 0].copy()
-        df_box["Gruppe"] = df_box["erfolg_flag"].map({1: "✅ Erfolgreich", 0: "❌ Nicht erfolgreich"})
+        df_box["Gruppe"] = df_box["erfolg_flag"].map({1: "Erfolgreich", 0: "Nicht erfolgreich"})
 
         fig_box = go.Figure()
         colors = {
-            "✅ Erfolgreich": COLOR_SUCCESS,
-            "❌ Nicht erfolgreich": COLOR_DANGER,
+            "Erfolgreich": COLOR_SUCCESS,
+            "Nicht erfolgreich": COLOR_DANGER,
         }
         for i, (feat_col, feat_label) in enumerate(box_features.items()):
             for gruppe, grp_color in colors.items():
@@ -1347,7 +1378,7 @@ elif page == "🏅 Erfolgs-Profil":
     avg_inc   = df_succ["medianeinkommen_eur"].mean() if len(df_succ) > 0 else 0
 
     st.info(
-        f"💡  **Insight:** Erfolgreiche Läden stehen in PLR mit Ø **{avg_trans:.0f}** "
+        f"**Hinweis:** Erfolgreiche Läden stehen in PLR mit durchschnittlich **{avg_trans:.0f}** "
         f"ÖPNV-Stationen und einem Median-Einkommen von **{avg_inc:,.0f} €**."
     )
 
@@ -1372,13 +1403,13 @@ elif page == "🏅 Erfolgs-Profil":
 # =============================================================================
 #  PAGE 4 — PLR-Vergleich
 # =============================================================================
-elif page == "🔍 PLR-Vergleich":
-    st.title("🔍 PLR-Vergleich")
+elif page == "PLR-Vergleich":
+    st.title("PLR-Vergleich")
     st.markdown("Wähle 2–4 Planungsräume für einen direkten Vergleich.")
     st.markdown("---")
 
     # Compute default scores for comparison (equal weights)
-    df_comp = compute_scores(df_raw, 30, 30, 20, 10, 10, "Kaufkraft 💰")
+    df_comp = compute_scores(df_raw, 30, 30, 20, 10, 10, "Kaufkraft")
 
     plr_options = sorted(df_comp["plr_name"].tolist())
     selected_plrs = st.multiselect(
@@ -1389,7 +1420,7 @@ elif page == "🔍 PLR-Vergleich":
     )
 
     if len(selected_plrs) < 2:
-        st.info("ℹ️  Bitte mindestens 2 Planungsräume auswählen, um den Vergleich zu starten.")
+        st.info("Bitte mindestens 2 Planungsräume auswählen, um den Vergleich zu starten.")
     else:
         df_sel = df_comp[df_comp["plr_name"].isin(selected_plrs)].copy()
 
@@ -1439,7 +1470,7 @@ elif page == "🔍 PLR-Vergleich":
         # ── CSV download ─────────────────────────────────────────────────────
         csv_data = df_sel[available_cols].to_csv(index=False, sep=";", decimal=",")
         st.download_button(
-            label="⬇️  Vergleich als CSV exportieren",
+            label="Vergleich als CSV exportieren",
             data=csv_data,
             file_name="plr_vergleich.csv",
             mime="text/csv",
@@ -1449,8 +1480,8 @@ elif page == "🔍 PLR-Vergleich":
 # =============================================================================
 #  PAGE 4b — Konzepte & Daten
 # =============================================================================
-if page == "📚 Konzepte & Daten":
-    st.title("Konzepte & Daten")
+if page == "Konzepte und Daten":
+    st.title("Konzepte und Daten")
     st.markdown(
         "Dieses Blatt erklärt alle Konzepte, Scores und Analysen, die im Dashboard verwendet werden. "
         "Es richtet sich an alle, die verstehen möchten, wie die Ergebnisse zustande kommen."
@@ -1668,12 +1699,12 @@ in der Marktanalyse und im PLR-Vergleich nutzbar ist.
 # =============================================================================
 #  PAGE 5 — Methodik
 # =============================================================================
-elif page == "📖 Methodik":
-    st.title("📖 Methodik & Dokumentation")
+elif page == "Methodik":
+    st.title("Methodik und Dokumentation")
     st.markdown("---")
 
     # ── Datenquellen ──────────────────────────────────────────────────────────
-    st.subheader("📦 Datenquellen")
+    st.subheader("Datenquellen")
     data_sources = pd.DataFrame(
         [
             ["Google Places API", "Döner-Laden-Standorte + Bewertungen", "PLR (542)", "2024"],
@@ -1691,7 +1722,7 @@ elif page == "📖 Methodik":
     st.markdown("---")
 
     # ── Score-Formel ───────────────────────────────────────────────────────────
-    st.subheader("🧮 Score-Formeln")
+    st.subheader("Score-Formeln")
 
     st.markdown("**Normierungs-Funktion** (min-max, 0–1):")
     st.latex(r"\text{norm}(x) = \frac{x - x_{\min}}{x_{\max} - x_{\min}}")
@@ -1747,7 +1778,7 @@ elif page == "📖 Methodik":
     st.markdown("---")
 
     # ── Methodik ───────────────────────────────────────────────────────────────
-    st.subheader("🔬 Methodik")
+    st.subheader("Methodik")
 
     st.markdown(
         """
@@ -1763,7 +1794,7 @@ elif page == "📖 Methodik":
     st.markdown("---")
 
     # ── Limitierungen ─────────────────────────────────────────────────────────
-    st.subheader("⚠️ Bekannte Limitierungen")
+    st.subheader("Bekannte Limitierungen")
 
     st.markdown(
         """
