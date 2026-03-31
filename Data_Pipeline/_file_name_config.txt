@@ -19,7 +19,7 @@ MSS_XLSX=lor_monitoring_soziale-stadtentwicklung_2023.xlsx
 DOENER_CSV=dataset_berlin_doener_clean.csv
 
 # --- Input: IHK Gewerbedaten Berlin ---
-IHK_CSV=lor_IHKBerlin_Gewerbedaten.csv
+IHK_CSV=lor_IHKBerlin_Gewerbedaten_cleaned.csv
 
 # --- Input: Infrastruktur (Google Places Aggregate API) ---
 # Wird erzeugt durch: infrastruktur_aggregate-api.ipynb
