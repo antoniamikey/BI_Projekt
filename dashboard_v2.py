@@ -536,7 +536,7 @@ _init_session_state()
 # Sidebar navigation
 # =============================================================================
 
-_logo_path = os.path.join(os.path.dirname(__file__) if "__file__" in dir() else ".", "jg.png")
+_logo_path = os.path.join(os.path.dirname(__file__) if "__file__" in dir() else ".", "jg.jpg")
 if os.path.exists(_logo_path):
     st.sidebar.image(_logo_path, use_container_width=True)
 
